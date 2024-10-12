@@ -3,9 +3,6 @@ import axios from 'axios';
 
 const SnapchatDownloader = () => {
     const [url, setUrl] = useState(''); // URL of the media
-    const [downloadLink, setDownloadLink] = useState(''); // Link for downloading the file
-    const [preview, setPreview] = useState(''); // Media preview
-    const [mediaType, setMediaType] = useState(''); // Type of media (image or video)
     const [error, setError] = useState(''); // Error handling
     const [loading, setLoading] = useState(false); // Loading state
     const [mediaFiles, setMediaFiles] = useState([]); // Array of media files
@@ -14,43 +11,29 @@ const SnapchatDownloader = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        setDownloadLink('');
-        setPreview('');
-        setMediaFiles([])
         setLoading(true);
         try {
             // Example API call to fetch the downloadable media URL
             const options = {
-                method: 'GET',
-                url: 'https://snapchat3.p.rapidapi.com/getStoryByLink',
-                params: {
-                    story_link: url
-                },
+                method: 'POST',
+                url: 'https://auto-download-all-in-one.p.rapidapi.com/v1/social/autolink',
                 headers: {
-                    'x-rapidapi-key': 'aa0a1c4d8bmsh56ee676007c7e75p1642d3jsnb6d63b8efb61',
-                    'x-rapidapi-host': 'snapchat3.p.rapidapi.com'
+                  'x-rapidapi-key': 'aa0a1c4d8bmsh56ee676007c7e75p1642d3jsnb6d63b8efb61',
+                  'x-rapidapi-host': 'auto-download-all-in-one.p.rapidapi.com',
+                  'Content-Type': 'application/json'
+                },
+                data: {
+                  url: url
                 }
-            };
-
-            try {
-                const response = await axios.request(options);
-                console.log(response.data.data.story.snapList);
-                setMediaFiles(response.data.data.story.snapList)
-                // Assuming the API returns the media download URL and file type
-                const downloadUrl = response.data.data.story.snapList[0].snapUrls.mediaUrl; // Replace with actual API response
-                // console.log(response.data.data.story.snapList[0].snapMediaType,"Type")
-                if (response.data.data.story.snapList[0].snapMediaType == 0) {
-                    setMediaType('image') // e.g., 'image' or 'video'
-                }
-                else if (response.data.data.story.snapList[0].snapMediaType == 1) {
-                    setMediaType('video') // e.g., 'image' or 'video'
-                }
-                // Set download link and preview
-                setDownloadLink(downloadUrl);
-                setPreview(downloadUrl); // Use the URL to preview the media
-            } catch (error) {
-                console.error(error);
-            }
+              };
+              
+              try {
+                  const response = await axios.request(options);
+                  console.log(response.data.medias,"resp");
+                  setMediaFiles(response.data.medias)
+              } catch (error) {
+                  console.error(error);
+              }
         } catch (err) {
             console.error('Error fetching media:', err);
             setError('Failed to fetch the media. Please try again.');
@@ -60,23 +43,18 @@ const SnapchatDownloader = () => {
 
     // Function to extract the original filename from URL
     const getFileNameFromUrl = (url) => {
-        return url.substring(url.lastIndexOf('/') + 1).split('?')[0]; // Extract file name
+        // return url.substring(url.lastIndexOf('/') + 1).split('?')[0]; // Extract file name
+        return url.split("/")[4].split(".")[0];
     };
 
     // Function to handle downloading the media
     const handleDownload = async (media) => {
         try {
-            let fileName = getFileNameFromUrl(media.snapUrls.mediaUrl);
-            console.log(media.snapMediaType)
-            if (media.snapMediaType == 1) {
-                fileName += '.mp4'
-            }
-            else if (media.snapMediaType == 0) {
-                fileName += '.jpeg'
-            }
+            let fileName = getFileNameFromUrl(media.url);
+            console.log(media.type)
 
             // Fetch the file as a Blob
-            const response = await axios.get(media.snapUrls.mediaUrl, {
+            const response = await axios.get(media.url, {
                 responseType: 'blob', // Important to get the file as a binary Blob
             });
 
@@ -124,16 +102,16 @@ const SnapchatDownloader = () => {
                 <div style={{ marginTop: '20px' }}>
                     {mediaFiles.map((media, index) => (
                         <div key={index} style={{ marginBottom: '20px' }}>
-                            {media.snapMediaType === 0 ? (
-                                <img src={media.snapUrls.mediaUrl} alt="Media Preview" style={{ maxWidth: '100%', height: 'auto' }} />
+                            {media.type === 'image' ? (
+                                <img src={media.url} alt="Media Preview" style={{ maxWidth: '100%', height: 'auto' }} />
                             ) : (
-                                <video controls src={media.snapUrls.mediaUrl} style={{ maxWidth: '100%', height: 'auto' }}>
+                                <video controls src={media.url} style={{ maxWidth: '100%', height: 'auto' }}>
                                     Your browser does not support the video tag.
                                 </video>
                             )}
                             <br />
                             <button onClick={() => handleDownload(media)} style={{ marginTop: '10px', padding: '10px 20px' }}>
-                                Download {media.snapMediaType === 0 ? 'Image' : 'Video'}
+                                Download {media.type === 'image' ? 'Image' : 'Video'}
                             </button>
                         </div>
                     ))}
