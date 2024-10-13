@@ -1,42 +1,39 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-// import './YoutubeDownloader.css'; // Ensure you have the CSS for styling
 
 const YoutubeDownloader = () => {
     const [videoUrl, setVideoUrl] = useState('');
-    const [allFormatFiles, setallFormatFiles] = useState([])
-    let embedUrl = "";
-    function extractYouTubeID(url) {
+    const [allFormatFiles, setAllFormatFiles] = useState([]);
+    const [selectedFormat, setSelectedFormat] = useState(null);
+    const [mediaUrl, setMediaUrl] = useState('');
+    const [fileName, setFileName] = useState('downloaded_video');
+
+    const extractYouTubeID = (url) => {
         let videoId;
 
-        // Regular YouTube URL
         const regExp1 = /^.*(?:youtu.be\/|v\/|watch\?v=)([^#&?]*).*/;
-        // YouTube Shorts URL
         const regExp2 = /^.*(?:youtube\.com\/shorts\/)([^#&?]*).*/;
 
-        // Check if it matches the regular video URL pattern
         const match1 = url.match(regExp1);
         if (match1 && match1[1].length === 11) {
             videoId = match1[1];
         }
 
-        // Check if it matches the shorts URL pattern
         const match2 = url.match(regExp2);
         if (match2) {
             videoId = match2[1];
         }
-        embedUrl = "https://www.youtube.com/embed/" + videoId;
 
         return videoId;
-    }
+    };
 
-    // Function to download YouTube video
     const downloadYouTubeVideo = async () => {
         const videoId = extractYouTubeID(videoUrl);
         if (!videoId) {
             alert('Invalid YouTube URL');
             return;
         }
+
         const options = {
             method: 'GET',
             url: 'https://yt-api.p.rapidapi.com/dl',
@@ -48,51 +45,86 @@ const YoutubeDownloader = () => {
         };
 
         try {
-            // Replace with your backend API endpoint or a third-party service
             const response = await axios.request(options);
-            setallFormatFiles(response.data.adaptiveFormats);
-            console.log(response.data, "D")
-            console.log(allFormatFiles);
+            setAllFormatFiles(response.data.adaptiveFormats);
+            console.log(allFormatFiles,"AFF")
         } catch (error) {
             console.error('Error fetching download link:', error);
         }
     };
 
-    const handleDownloadClick = (file) => {
-        if (file) {
-            // const link = document.createElement('a');
-            // link.href = file.url;
-            // link.download = ''; // You can specify a filename here if needed
-            // document.body.appendChild(link);
-            // link.click();
-            // link.remove();
-            window.open(file.url, '_blank');
+    const handleDownloadClick = async () => {
+        if (!selectedFormat) {
+            alert('Please select a video format to download.');
+            return;
+        }
+
+        try {
+            const response = await axios.get(selectedFormat.url, {
+                responseType: 'blob',
+            });
+
+            const blob = new Blob([response.data], { type: selectedFormat.mimeType });
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `${fileName}.${selectedFormat.mimeType.split('/')[1]}`;
+            document.body.appendChild(link);
+            link.click();
+
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error downloading video:', error);
         }
     };
 
     return (
         <div className="app-container">
-            <div>
-                <h2>YouTube Content</h2>
-                <input
-                    type="text"
-                    placeholder="Paste YouTube video URL"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    required
-                    style={{ width: '300px', padding: '10px', fontSize: '16px' }}
-                />
-                <button type="submit" onClick={downloadYouTubeVideo} style={{ marginLeft: '10px', padding: '10px 20px' }}>
-                    Download
-                </button>
-                <iframe width="640" height="360" src={embedUrl} title="Hilarious food Vlog with Sree Vishnu || SWAG || Daksha Nagarkar || Cocanada || TastyTeja | Infinitum" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>
-                {videoUrl && (
+            <h2>YouTube Video Downloader</h2>
+            <input
+                type="text"
+                placeholder="Paste YouTube video URL"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                required
+                style={{ width: '300px', padding: '10px', fontSize: '16px' }}
+            />
+            <button type="submit" onClick={downloadYouTubeVideo} style={{ marginLeft: '10px', padding: '10px 20px' }}>
+                Fetch Formats
+            </button>
+
+            {allFormatFiles.length > 0 && (
+                <>
                     <div>
-                        <p>Download your video:</p>
-                        <button onClick={handleDownloadClick(allFormatFiles[0])}>Download Video</button>
+                        <label htmlFor="format">Choose a format:</label>
+                        <select
+                            id="format"
+                            onChange={(e) => setSelectedFormat(allFormatFiles[e.target.value])}
+                        >
+                            <option value="">Select format</option>
+                            {allFormatFiles.map((file, index) => (
+                                <option key={index} value={index}>
+                                    {file.qualityLabel} - {file.mimeType}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                )}
-            </div>
+
+                    <input
+                        type="text"
+                        placeholder="Enter a file name"
+                        value={fileName}
+                        onChange={(e) => setFileName(e.target.value)}
+                        style={{ marginTop: '10px', padding: '10px' }}
+                    />
+
+                    <button onClick={handleDownloadClick} style={{ marginLeft: '10px', padding: '10px 20px' }}>
+                        Download
+                    </button>
+                </>
+            )}
         </div>
     );
 };
